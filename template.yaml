@@ -1,29 +1,12 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "VPC with Public and Private Subnets"
-
-Parameters:
-  VpcCIDR:
-    Type: String
-    Default: 10.0.0.0/16
-    Description: CIDR block for the VPC
-  PublicSubnetCIDR:
-    Type: String
-    Default: 10.0.1.0/24
-    Description: CIDR block for the public subnet
-  PrivateSubnetCIDR:
-    Type: String
-    Default: 10.0.2.0/24
-    Description: CIDR block for the private subnet
-  KeyName:
-    Type: AWS::EC2::KeyPair::KeyName
-    Description: Name of an existing EC2 KeyPair for SSH access
+Description: "Simple VPC with Public and Private Subnets"
 
 Resources:
   # VPC
   VPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !Ref VpcCIDR
+      CidrBlock: 10.0.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
       Tags:
@@ -49,7 +32,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Ref PublicSubnetCIDR
+      CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       MapPublicIpOnLaunch: true
       Tags:
@@ -61,7 +44,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Ref PrivateSubnetCIDR
+      CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       Tags:
         - Key: Name
@@ -160,8 +143,8 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI (replace with current AMI ID)
-      KeyName: !Ref KeyName
+      ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI
+      KeyName: test-key # Replace with your key pair name
       SubnetId: !Ref PublicSubnet
       SecurityGroupIds:
         - !Ref PublicInstanceSecurityGroup
@@ -173,8 +156,8 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI (replace with current AMI ID)
-      KeyName: !Ref KeyName
+      ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI
+      KeyName: test-key # Replace with your key pair name
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
         - !Ref PrivateInstanceSecurityGroup
@@ -189,3 +172,6 @@ Outputs:
   PrivateInstanceIP:
     Description: Private IP of the instance in private subnet
     Value: !GetAtt PrivateInstance.PrivateIp
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
