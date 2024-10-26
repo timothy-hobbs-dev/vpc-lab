@@ -143,7 +143,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI
+      ImageId: ami-057bd1ea0ca1b497e # Amazon Linux 2023 AMI
       KeyName: test-key # Replace with your key pair name
       SubnetId: !Ref PublicSubnet
       SecurityGroupIds:
@@ -156,7 +156,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI
+      ImageId: ami-057bd1ea0ca1b497e # Amazon Linux 2023 AMI
       KeyName: test-key # Replace with your key pair name
       SubnetId: !Ref PrivateSubnet
       SecurityGroupIds:
