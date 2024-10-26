@@ -168,7 +168,7 @@ Resources:
   PrivateInstance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t3.xlarge # Changed from t2.micro due to MATE Desktop requirements
+      InstanceType: t3.xlarge # Changed from t2.micro due to MATE Desktop requirementss
       ImageId: ami-03c2970bdb10a9e99 # Amazon Linux 2 MATE Desktop with .NET
       KeyName: test-key # Replace with your key pair name
       SubnetId: !Ref PrivateSubnet
