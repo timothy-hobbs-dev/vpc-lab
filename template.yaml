@@ -197,6 +197,7 @@ Resources:
   # Application Load Balancer
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: AttachGateway # Added dependency
     Properties:
       Scheme: internet-facing
       LoadBalancerAttributes:
