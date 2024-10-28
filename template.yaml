@@ -6,7 +6,7 @@ Resources:
   VPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 172.16.0.0/16 # Changed VPC CIDR block
+      CidrBlock: 172.16.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
       Tags:
@@ -29,9 +29,10 @@ Resources:
   # Public Subnets (for ALB)
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    DependsOn: AttachGateway
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 172.16.1.0/24 # Changed public subnet 1 CIDR
+      CidrBlock: 172.16.1.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       MapPublicIpOnLaunch: true
       Tags:
@@ -40,9 +41,10 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    DependsOn: AttachGateway
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 172.16.2.0/24 # Changed public subnet 2 CIDR
+      CidrBlock: 172.16.2.0/24
       AvailabilityZone: !Select [1, !GetAZs ""]
       MapPublicIpOnLaunch: true
       Tags:
@@ -54,7 +56,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 172.16.3.0/24 # Changed private subnet 1 CIDR
+      CidrBlock: 172.16.3.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       Tags:
         - Key: Name
@@ -64,7 +66,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 172.16.4.0/24 # Changed private subnet 2 CIDR
+      CidrBlock: 172.16.4.0/24
       AvailabilityZone: !Select [1, !GetAZs ""]
       Tags:
         - Key: Name
@@ -85,12 +87,18 @@ Resources:
 
   NatGateway1:
     Type: AWS::EC2::NatGateway
+    DependsOn:
+      - PublicSubnet1
+      - NatGateway1EIP
     Properties:
       AllocationId: !GetAtt NatGateway1EIP.AllocationId
       SubnetId: !Ref PublicSubnet1
 
   NatGateway2:
     Type: AWS::EC2::NatGateway
+    DependsOn:
+      - PublicSubnet2
+      - NatGateway2EIP
     Properties:
       AllocationId: !GetAtt NatGateway2EIP.AllocationId
       SubnetId: !Ref PublicSubnet2
@@ -130,6 +138,7 @@ Resources:
 
   PrivateRoute1:
     Type: AWS::EC2::Route
+    DependsOn: NatGateway1
     Properties:
       RouteTableId: !Ref PrivateRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
@@ -137,6 +146,7 @@ Resources:
 
   PrivateRoute2:
     Type: AWS::EC2::Route
+    DependsOn: NatGateway2
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
@@ -197,7 +207,9 @@ Resources:
   # Application Load Balancer
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    DependsOn: AttachGateway # Added dependency
+    DependsOn:
+      - PublicSubnet1RouteTableAssociation
+      - PublicSubnet2RouteTableAssociation
     Properties:
       Scheme: internet-facing
       LoadBalancerAttributes:
@@ -211,6 +223,7 @@ Resources:
 
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn: ApplicationLoadBalancer
     Properties:
       DefaultActions:
         - Type: forward
@@ -241,8 +254,8 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
-        ImageId: ami-03c2970bdb10a9e99 # Updated AMI ID for Amazon Linux 2 MATE Desktop with .NET
-        InstanceType: t3.xlarge # Updated instance type for MATE Desktop requirements
+        ImageId: ami-03c2970bdb10a9e99
+        InstanceType: t3.xlarge
         SecurityGroupIds:
           - !Ref WebServerSecurityGroup
         KeyName: test-key
@@ -259,6 +272,9 @@ Resources:
   # Auto Scaling Group
   WebServerASG:
     Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - PrivateSubnet1RouteTableAssociation
+      - PrivateSubnet2RouteTableAssociation
     Properties:
       MinSize: 2
       MaxSize: 4
