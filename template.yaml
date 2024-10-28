@@ -1,12 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "VPC with ALB and ASG running web application across 2 AZs"
 
-Parameters:
-  KeyName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access
-    Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: Must be the name of an existing EC2 KeyPair
-
 Resources:
   # VPC Configuration
   VPC:
@@ -246,11 +240,11 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
-        ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI (update as needed)
+        ImageId: ami-0440d3b780d96b29d # Amazon Linux 2023 AMI
         InstanceType: t2.micro
         SecurityGroupIds:
           - !Ref WebServerSecurityGroup
-        KeyName: !Ref KeyName
+        KeyName: test-key # Hardcoded key pair name
         UserData:
           Fn::Base64: !Sub |
             #!/bin/bash
