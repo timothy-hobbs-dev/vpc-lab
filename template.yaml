@@ -1,24 +1,25 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "VPC with ALB and ASG running web application across 2 AZs"
+Description: "Simple VPC with Public and Private Subnets using Amazon Linux 2 MATE Desktop with .NET"
 
 Resources:
-  # VPC Configuration
+  # VPC
   VPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 172.16.0.0/16
+      CidrBlock: 10.0.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
       Tags:
         - Key: Name
-          Value: WebApp VPC
+          Value: Test VPC
 
+  # Internet Gateway
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: WebApp IGW
+          Value: Test IGW
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -26,82 +27,41 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  # Public Subnets (for ALB)
-  PublicSubnet1:
+  # Public Subnet
+  PublicSubnet:
     Type: AWS::EC2::Subnet
-    DependsOn: AttachGateway
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 172.16.1.0/24
+      CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: Public Subnet 1
+          Value: Public Subnet
 
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    DependsOn: AttachGateway
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 172.16.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs ""]
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: Public Subnet 2
-
-  # Private Subnets (for ASG)
-  PrivateSubnet1:
+  # Private Subnet
+  PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: 172.16.3.0/24
+      CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select [0, !GetAZs ""]
       Tags:
         - Key: Name
-          Value: Private Subnet 1
+          Value: Private Subnet
 
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 172.16.4.0/24
-      AvailabilityZone: !Select [1, !GetAZs ""]
-      Tags:
-        - Key: Name
-          Value: Private Subnet 2
-
-  # NAT Gateways
-  NatGateway1EIP:
+  # NAT Gateway
+  NatGatewayEIP:
     Type: AWS::EC2::EIP
     DependsOn: AttachGateway
     Properties:
       Domain: vpc
 
-  NatGateway2EIP:
-    Type: AWS::EC2::EIP
-    DependsOn: AttachGateway
-    Properties:
-      Domain: vpc
-
-  NatGateway1:
+  NatGateway:
     Type: AWS::EC2::NatGateway
-    DependsOn:
-      - PublicSubnet1
-      - NatGateway1EIP
     Properties:
-      AllocationId: !GetAtt NatGateway1EIP.AllocationId
-      SubnetId: !Ref PublicSubnet1
-
-  NatGateway2:
-    Type: AWS::EC2::NatGateway
-    DependsOn:
-      - PublicSubnet2
-      - NatGateway2EIP
-    Properties:
-      AllocationId: !GetAtt NatGateway2EIP.AllocationId
-      SubnetId: !Ref PublicSubnet2
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
 
   # Route Tables
   PublicRouteTable:
@@ -112,21 +72,13 @@ Resources:
         - Key: Name
           Value: Public Route Table
 
-  PrivateRouteTable1:
+  PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: Private Route Table 1
-
-  PrivateRouteTable2:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: Private Route Table 2
+          Value: Private Route Table
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -136,169 +88,108 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PrivateRoute1:
+  PrivateRoute:
     Type: AWS::EC2::Route
-    DependsOn: NatGateway1
     Properties:
-      RouteTableId: !Ref PrivateRouteTable1
+      RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway1
+      NatGatewayId: !Ref NatGateway
 
-  PrivateRoute2:
-    Type: AWS::EC2::Route
-    DependsOn: NatGateway2
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable2
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway2
-
-  # Route Table Associations
-  PublicSubnet1RouteTableAssociation:
+  PublicSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
-  PublicSubnet2RouteTableAssociation:
+  PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet2
-      RouteTableId: !Ref PublicRouteTable
-
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable1
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
 
   # Security Groups
-  ALBSecurityGroup:
+  PublicInstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for ALB
+      GroupDescription: Allow SSH, RDP and ICMP
       VpcId: !Ref VPC
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-
-  WebServerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for web servers
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
 
-  # Application Load Balancer
-  ApplicationLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    DependsOn:
-      - PublicSubnet1RouteTableAssociation
-      - PublicSubnet2RouteTableAssociation
+  PrivateInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      Scheme: internet-facing
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: "60"
-      Subnets:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-      SecurityGroups:
-        - !Ref ALBSecurityGroup
-
-  ALBListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    DependsOn: ApplicationLoadBalancer
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref ALBTargetGroup
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
-      Protocol: HTTP
-
-  ALBTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 30
-      HealthCheckPath: /
-      HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      Port: 80
-      Protocol: HTTP
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: "20"
-      TargetType: instance
+      GroupDescription: Allow SSH and ICMP from Public Subnet
       VpcId: !Ref VPC
-      UnhealthyThresholdCount: 5
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicInstanceSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          SourceSecurityGroupId: !Ref PublicInstanceSecurityGroup
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
 
-  # Launch Template
-  WebServerLaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
+  # EC2 Instances
+  PublicInstance:
+    Type: AWS::EC2::Instance
     Properties:
-      LaunchTemplateData:
-        ImageId: ami-03c2970bdb10a9e99
-        InstanceType: t3.xlarge
-        SecurityGroupIds:
-          - !Ref WebServerSecurityGroup
-        KeyName: test-key
-        UserData:
-          Fn::Base64: !Sub |
-            #!/bin/bash
-            yum update -y
-            yum install -y httpd
-            INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-            echo "<h1>Hello from instance $INSTANCE_ID</h1>" > /var/www/html/index.html
-            systemctl start httpd
-            systemctl enable httpd
-
-  # Auto Scaling Group
-  WebServerASG:
-    Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn:
-      - PrivateSubnet1RouteTableAssociation
-      - PrivateSubnet2RouteTableAssociation
-    Properties:
-      MinSize: 2
-      MaxSize: 4
-      DesiredCapacity: 2
-      HealthCheckGracePeriod: 300
-      HealthCheckType: ELB
-      LaunchTemplate:
-        LaunchTemplateId: !Ref WebServerLaunchTemplate
-        Version: !GetAtt WebServerLaunchTemplate.LatestVersionNumber
-      TargetGroupARNs:
-        - !Ref ALBTargetGroup
-      VPCZoneIdentifier:
-        - !Ref PrivateSubnet1
-        - !Ref PrivateSubnet2
+      InstanceType: t3.xlarge # Changed from t2.micro due to MATE Desktop requirements
+      ImageId: ami-03c2970bdb10a9e99 # Amazon Linux 2 MATE Desktop with .NET
+      KeyName: test-key # Replace with your key pair name
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref PublicInstanceSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp2
       Tags:
         - Key: Name
-          Value: WebServer
-          PropagateAtLaunch: true
+          Value: Public Instance
+
+  PrivateInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.xlarge # Changed from t2.micro due to MATE Desktop requirementss
+      ImageId: ami-03c2970bdb10a9e99 # Amazon Linux 2 MATE Desktop with .NET
+      KeyName: test-key # Replace with your key pair name
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !Ref PrivateInstanceSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: Private Instance
 
 Outputs:
-  LoadBalancerDNS:
-    Description: DNS name of the load balancer
-    Value: !GetAtt ApplicationLoadBalancer.DNSName
-
-  VPCId:
+  PublicInstanceIP:
+    Description: Public IP of the instance in public subnet
+    Value: !GetAtt PublicInstance.PublicIp
+  PrivateInstanceIP:
+    Description: Private IP of the instance in private subnet
+    Value: !GetAtt PrivateInstance.PrivateIp
+  VpcId:
     Description: VPC ID
     Value: !Ref VPC
