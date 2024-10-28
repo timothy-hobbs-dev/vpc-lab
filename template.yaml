@@ -237,12 +237,12 @@ Resources:
       UnhealthyThresholdCount: 5
 
   # Launch Template
- WebServerLaunchTemplate:
+  WebServerLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
-        ImageId: ami-03c2970bdb10a9e99  # Updated AMI ID for Amazon Linux 2 MATE Desktop with .NET
-        InstanceType: t3.xlarge  # Updated instance type for MATE Desktop requirements
+        ImageId: ami-03c2970bdb10a9e99 # Updated AMI ID for Amazon Linux 2 MATE Desktop with .NET
+        InstanceType: t3.xlarge # Updated instance type for MATE Desktop requirements
         SecurityGroupIds:
           - !Ref WebServerSecurityGroup
         KeyName: test-key
